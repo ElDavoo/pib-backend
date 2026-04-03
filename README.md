@@ -17,6 +17,24 @@ The backend also supports direct execution through the module entrypoint:
 python -m pib_backend.main
 ```
 
+## Docker
+
+Build the hardened image:
+
+```bash
+docker build -t pib-backend:latest .
+```
+
+Run the locked-down compose service:
+
+```bash
+docker compose up --build
+```
+
+The container listens on `127.0.0.1:8080` and stores SQLite data in the named volume defined in `docker-compose.yml`.
+
+GitHub Actions publishes multi-arch images to `ghcr.io/<owner>/<repo>` when you create a `v*` tag or publish a GitHub Release.
+
 ## Environment
 
 The service reads these environment variables:

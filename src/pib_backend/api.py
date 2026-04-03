@@ -32,7 +32,7 @@ class MaxRequestSizeMiddleware(BaseHTTPMiddleware):
         body = await request.body()
         if len(body) > self._max_bytes:
             return JSONResponse(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 content=ErrorResponse(error="request body exceeds configured size limit").model_dump(),
             )
         return await call_next(request)

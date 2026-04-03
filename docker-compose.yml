@@ -1,0 +1,39 @@
+services:
+  pib-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pib-backend:latest
+    container_name: pib-backend
+    environment:
+      PIB_HOST: 0.0.0.0
+      PIB_PORT: 8080
+      PIB_SQLITE_PATH: /data/pib-telemetry.sqlite3
+      PIB_MAX_REQUEST_BYTES: 1000000
+      PIB_MAX_EVENTS_PER_BATCH: 100
+      PIB_LOG_LEVEL: INFO
+      PIB_DEFAULT_RETRY_AFTER_SECONDS: 5
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - pib_backend_data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    user: "10001:10001"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2).read()"
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pib_backend_data:
