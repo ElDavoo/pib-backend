@@ -20,7 +20,11 @@ class TelemetryEvent(BaseModel):
 
     id: StrictInt = Field(ge=0)
     timestampMs: StrictInt = Field(ge=0)
+    userId: str | None = Field(default=None, min_length=1)
     packageName: str = Field(min_length=1)
+    playIntegrityVersionMajor: StrictInt | None = Field(default=None, ge=0)
+    playIntegrityVersionMinor: StrictInt | None = Field(default=None, ge=0)
+    playIntegrityVersionPatch: StrictInt | None = Field(default=None, ge=0)
     eventType: Literal["request", "response"]
     success: bool | None = None
     errorCode: StrictInt | None = None
@@ -35,7 +39,6 @@ class TelemetryUploadRequest(BaseModel):
     schemaVersion: StrictInt = Field(ge=1)
     batchId: str = Field(min_length=1)
     sentAtMs: StrictInt = Field(ge=0)
-    client: TelemetryClientInfo
     events: list[TelemetryEvent] = Field(default_factory=list)
 
 

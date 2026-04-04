@@ -12,18 +12,15 @@ def build_payload(batch_id: str = "batch-123") -> dict[str, object]:
         "schemaVersion": 1,
         "batchId": batch_id,
         "sentAtMs": 1710000000000,
-        "client": {
-            "appVersionName": "1.0.0",
-            "appVersionCode": 7,
-            "sdkInt": 34,
-            "device": "pixel",
-            "model": "pixel 8",
-        },
         "events": [
             {
                 "id": 1,
                 "timestampMs": 1710000000100,
+                "userId": "user-123",
                 "packageName": "icu.nullptr.playintegritybreak",
+                "playIntegrityVersionMajor": 1,
+                "playIntegrityVersionMinor": 2,
+                "playIntegrityVersionPatch": 3,
                 "eventType": "request",
                 "source": "client",
                 "attemptCount": 0,
@@ -31,7 +28,11 @@ def build_payload(batch_id: str = "batch-123") -> dict[str, object]:
             {
                 "id": 2,
                 "timestampMs": 1710000000200,
+                "userId": "user-123",
                 "packageName": "icu.nullptr.playintegritybreak",
+                "playIntegrityVersionMajor": 1,
+                "playIntegrityVersionMinor": 2,
+                "playIntegrityVersionPatch": 3,
                 "eventType": "response",
                 "success": True,
                 "source": "client",
@@ -64,7 +65,12 @@ def test_post_telemetry_persists_batch_and_returns_ack(tmp_path) -> None:
     assert stored["ack_id"] == body["ackId"]
     assert stored["event_count"] == 2
     assert stored["raw_request"]["batchId"] == "batch-123"
+    assert "client" not in stored["raw_request"]
     assert stored["events"][0]["event_type"] == "request"
+    assert stored["events"][0]["user_id"] == "user-123"
+    assert stored["events"][0]["play_integrity_version_major"] == 1
+    assert stored["events"][0]["play_integrity_version_minor"] == 2
+    assert stored["events"][0]["play_integrity_version_patch"] == 3
 
 
 def test_schema_version_must_be_one(tmp_path) -> None:

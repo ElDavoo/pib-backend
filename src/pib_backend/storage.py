@@ -56,7 +56,11 @@ class TelemetryRepository:
                     event_index INTEGER NOT NULL,
                     event_id INTEGER NOT NULL,
                     timestamp_ms INTEGER NOT NULL,
+                    user_id TEXT,
                     package_name TEXT NOT NULL,
+                    play_integrity_version_major INTEGER,
+                    play_integrity_version_minor INTEGER,
+                    play_integrity_version_patch INTEGER,
                     event_type TEXT NOT NULL,
                     success INTEGER,
                     error_code INTEGER,
@@ -72,6 +76,10 @@ class TelemetryRepository:
                 CREATE INDEX IF NOT EXISTS idx_telemetry_batches_sent_at_ms ON telemetry_batches(sent_at_ms);
                 """
             )
+            self._ensure_column(connection, "telemetry_events", "user_id", "TEXT")
+            self._ensure_column(connection, "telemetry_events", "play_integrity_version_major", "INTEGER")
+            self._ensure_column(connection, "telemetry_events", "play_integrity_version_minor", "INTEGER")
+            self._ensure_column(connection, "telemetry_events", "play_integrity_version_patch", "INTEGER")
 
     def ingest_batch(
         self,
@@ -80,7 +88,6 @@ class TelemetryRepository:
         received_at_ms: int,
     ) -> IngestResult:
         ack_id = f"ack-{uuid4().hex}"
-        client_json = payload.client.model_dump_json()
         event_count = len(payload.events)
 
         with self._connect() as connection:
@@ -106,7 +113,7 @@ class TelemetryRepository:
                         payload.schemaVersion,
                         payload.sentAtMs,
                         received_at_ms,
-                        client_json,
+                        "{}",
                         raw_request_json,
                         event_count,
                     ),
@@ -120,7 +127,11 @@ class TelemetryRepository:
                             event_index,
                             event_id,
                             timestamp_ms,
+                            user_id,
                             package_name,
+                            play_integrity_version_major,
+                            play_integrity_version_minor,
+                            play_integrity_version_patch,
                             event_type,
                             success,
                             error_code,
@@ -128,14 +139,18 @@ class TelemetryRepository:
                             source,
                             attempt_count,
                             raw_event_json
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             payload.batchId,
                             event_index,
                             event.id,
                             event.timestampMs,
+                            event.userId,
                             event.packageName,
+                            event.playIntegrityVersionMajor,
+                            event.playIntegrityVersionMinor,
+                            event.playIntegrityVersionPatch,
                             event.eventType,
                             _bool_to_int(event.success),
                             event.errorCode,
@@ -201,7 +216,9 @@ class TelemetryRepository:
 
             events = connection.execute(
                 """
-                SELECT event_index, event_id, timestamp_ms, package_name, event_type, success, error_code, retriable, source, attempt_count, raw_event_json
+                SELECT event_index, event_id, timestamp_ms, user_id, package_name,
+                       play_integrity_version_major, play_integrity_version_minor, play_integrity_version_patch,
+                       event_type, success, error_code, retriable, source, attempt_count, raw_event_json
                 FROM telemetry_events
                 WHERE batch_id = ?
                 ORDER BY event_index ASC
@@ -220,6 +237,20 @@ class TelemetryRepository:
                 "event_count": row["event_count"],
                 "events": [dict(event) for event in events],
             }
+
+    def _ensure_column(
+        self,
+        connection: sqlite3.Connection,
+        table_name: str,
+        column_name: str,
+        column_type: str,
+    ) -> None:
+        existing_columns = {
+            str(row["name"]) for row in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+        }
+        if column_name in existing_columns:
+            return
+        connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
