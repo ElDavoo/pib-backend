@@ -9,7 +9,7 @@ description = "FastAPI + SQLite telemetry ingestion backend for Play Integrity B
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115,<1",
-  "pydantic>=2.7,<3",
+  "pydantic>=2.12.5,<3",
   "uvicorn[standard]>=0.30,<1",
 ]
 
