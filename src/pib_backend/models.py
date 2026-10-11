@@ -25,12 +25,15 @@ class TelemetryEvent(BaseModel):
     playIntegrityVersionMajor: StrictInt | None = Field(default=None, ge=0)
     playIntegrityVersionMinor: StrictInt | None = Field(default=None, ge=0)
     playIntegrityVersionPatch: StrictInt | None = Field(default=None, ge=0)
-    eventType: Literal["request", "response"]
+    eventType: Literal["request", "response", "integrity"]
     success: bool | None = None
     errorCode: StrictInt | None = None
     retriable: bool | None = None
     source: str = Field(min_length=1)
     attemptCount: StrictInt = Field(default=0, ge=0)
+    # Integrity events only: the verdict level, such as MEETS_STRONG_INTEGRITY, and the MD5 of the keybox the device had.
+    verdict: str | None = Field(default=None, pattern=r"^[A-Z_]{1,64}$")
+    keyboxId: str | None = Field(default=None, pattern=r"^[0-9a-f]{32}$")
 
 
 class TelemetryUploadRequest(BaseModel):

@@ -174,3 +174,74 @@ def test_transient_storage_error_maps_to_retryable_response(tmp_path, monkeypatc
     assert body["accepted"] is False
     assert body["retryable"] is True
     assert body["retryAfterMs"] == 7000
+
+
+def build_integrity_payload(
+    batch_id: str = "integrity-1",
+    keybox_id: str | None = "0123456789abcdef0123456789abcdef",
+    verdict: str = "MEETS_STRONG_INTEGRITY",
+) -> dict[str, object]:
+    event: dict[str, object] = {
+        "id": 0,
+        "timestampMs": 1710000000300,
+        "userId": "user-123",
+        "packageName": "com.android.vending",
+        "eventType": "integrity",
+        "source": "integrity-monitor",
+        "attemptCount": 0,
+        "verdict": verdict,
+    }
+    if keybox_id is not None:
+        event["keyboxId"] = keybox_id
+    return {"schemaVersion": 1, "batchId": batch_id, "sentAtMs": 1710000000400, "events": [event]}
+
+
+def test_integrity_event_keeps_verdict_and_keybox_id(tmp_path) -> None:
+    settings = Settings(sqlite_path=tmp_path / "telemetry.sqlite3")
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        response = client.post("/telemetry", json=build_integrity_payload())
+
+    assert response.status_code == 200
+    assert response.json()["accepted"] is True
+    stored = TelemetryRepository(settings).fetch_batch("integrity-1")
+    assert stored is not None
+    event = stored["events"][0]
+    assert event["event_type"] == "integrity"
+    assert event["verdict"] == "MEETS_STRONG_INTEGRITY"
+    assert event["keybox_id"] == "0123456789abcdef0123456789abcdef"
+
+
+def test_integrity_event_without_keybox_id_is_accepted(tmp_path) -> None:
+    settings = Settings(sqlite_path=tmp_path / "telemetry.sqlite3")
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        response = client.post("/telemetry", json=build_integrity_payload(batch_id="integrity-2", keybox_id=None))
+
+    assert response.status_code == 200
+    stored = TelemetryRepository(settings).fetch_batch("integrity-2")
+    assert stored is not None
+    assert stored["events"][0]["keybox_id"] is None
+
+
+def test_keybox_id_must_be_an_md5_hex(tmp_path) -> None:
+    settings = Settings(sqlite_path=tmp_path / "telemetry.sqlite3")
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        response = client.post("/telemetry", json=build_integrity_payload(keybox_id="not-a-keybox"))
+
+    assert response.status_code == 400
+    assert TelemetryRepository(settings).count_events() == 0
+
+
+def test_verdict_must_be_a_verdict_label(tmp_path) -> None:
+    settings = Settings(sqlite_path=tmp_path / "telemetry.sqlite3")
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        response = client.post("/telemetry", json=build_integrity_payload(verdict="meets strong"))
+
+    assert response.status_code == 400

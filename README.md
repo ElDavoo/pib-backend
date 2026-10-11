@@ -52,6 +52,13 @@ The service reads these environment variables:
 - `GET /health`
 - `POST /telemetry`
 
+## Event types
+
+- `request` and `response`: Play Integrity requests and responses, seen by the hook.
+- `integrity`: one integrity monitor check. `verdict` is the level label (`^[A-Z_]{1,64}$`, for example
+  `MEETS_STRONG_INTEGRITY` or `NO_INTEGRITY`). `keyboxId`, when present, is the MD5 of the keybox the device had (32 lowercase
+  hex digits). Integrity events are sent one at a time, not batched with queued events.
+
 ## Testing
 
 ```bash

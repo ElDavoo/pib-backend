@@ -80,6 +80,8 @@ class TelemetryRepository:
             self._ensure_column(connection, "telemetry_events", "play_integrity_version_major", "INTEGER")
             self._ensure_column(connection, "telemetry_events", "play_integrity_version_minor", "INTEGER")
             self._ensure_column(connection, "telemetry_events", "play_integrity_version_patch", "INTEGER")
+            self._ensure_column(connection, "telemetry_events", "verdict", "TEXT")
+            self._ensure_column(connection, "telemetry_events", "keybox_id", "TEXT")
 
     def ingest_batch(
         self,
@@ -138,8 +140,10 @@ class TelemetryRepository:
                             retriable,
                             source,
                             attempt_count,
-                            raw_event_json
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            raw_event_json,
+                            verdict,
+                            keybox_id
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             payload.batchId,
@@ -158,6 +162,8 @@ class TelemetryRepository:
                             event.source,
                             event.attemptCount,
                             event.model_dump_json(),
+                            event.verdict,
+                            event.keyboxId,
                         ),
                     )
 
@@ -218,7 +224,8 @@ class TelemetryRepository:
                 """
                 SELECT event_index, event_id, timestamp_ms, user_id, package_name,
                        play_integrity_version_major, play_integrity_version_minor, play_integrity_version_patch,
-                       event_type, success, error_code, retriable, source, attempt_count, raw_event_json
+                       event_type, success, error_code, retriable, source, attempt_count, raw_event_json,
+                       verdict, keybox_id
                 FROM telemetry_events
                 WHERE batch_id = ?
                 ORDER BY event_index ASC
